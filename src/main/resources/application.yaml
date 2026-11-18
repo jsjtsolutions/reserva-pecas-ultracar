@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: reserva-pecas
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/reservas}
+    username: ${DB_USER:reservas}
+    password: ${DB_PASSWORD:reservas}
+    hikari:
+      maximum-pool-size: ${DB_POOL:20}
+      minimum-idle: 5
+      connection-timeout: 5000
+      pool-name: pool-reservas
+      data-source-properties:
+        preparedStatementCacheQueries: 500
+        preparedStatementCacheSizeMiB: 10
+        reWriteBatchedInserts: true
+  flyway:
+    enabled: true
+    # FLYWAY_TARGET=2 permite medir o baseline de desempenho (ver DESEMPENHO.md)
+    target: ${FLYWAY_TARGET:latest}
+    baseline-on-migrate: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: 8080
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 200
+    max-connections: 4000
+
+reservas:
+  ttl: 30m
+  lote-expiracao: 500
+  expiracao:
+    intervalo-ms: 30000
+
+busca:
+  tamanho-pagina: 20
+  # LOTE (1 query de saldo para a pagina) | N_PLUS_1 (1 query por peca) - usado no DESEMPENHO.md
+  saldo-modo: ${BUSCA_SALDO_MODO:LOTE}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    br.com.ultracar.reservas: INFO

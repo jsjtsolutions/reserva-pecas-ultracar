@@ -1,0 +1,11 @@
+target/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.vscode/
+.DS_Store
+carga/resultado-busca.json
+carga/resultados/*.json
+carga/resultados/*.log
+.env
