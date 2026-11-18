@@ -9,13 +9,20 @@ services:
       POSTGRES_PASSWORD: reservas
     command:
       - postgres
-      - -c=shared_buffers=512MB
-      - -c=effective_cache_size=1536MB
-      - -c=work_mem=16MB
-      - -c=maintenance_work_mem=256MB
-      - -c=max_connections=200
-      - -c=random_page_cost=1.1
-      - -c=checkpoint_completion_target=0.9
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - max_connections=200
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - checkpoint_completion_target=0.9
     ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     shm_size: 256mb

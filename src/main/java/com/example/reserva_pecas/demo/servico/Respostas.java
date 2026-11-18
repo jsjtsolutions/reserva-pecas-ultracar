@@ -5,6 +5,7 @@ import com.example.reserva_pecas.demo.api.erro.Erros;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,8 +26,14 @@ public class Respostas {
     }
 
     public RespostaHttp conflito(ApiException e) {
-        return new RespostaHttp(e.getStatus().value(), MediaType.APPLICATION_PROBLEM_JSON_VALUE,
-                escrever(Erros.toProblem(e)));
+        ProblemDetail pd = Erros.toProblem(e);
+        java.util.Map<String, Object> corpo = new java.util.LinkedHashMap<>();
+        corpo.put("type", pd.getType().toString());
+        corpo.put("title", pd.getTitle());
+        corpo.put("status", pd.getStatus());
+        corpo.put("detail", pd.getDetail());
+        corpo.putAll(pd.getProperties());   // code, itensFaltantes, reservaId...
+        return new RespostaHttp(e.getStatus().value(), MediaType.APPLICATION_PROBLEM_JSON_VALUE, escrever(corpo));
     }
 
     private String escrever(Object o) {

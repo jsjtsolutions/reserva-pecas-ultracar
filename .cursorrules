@@ -1,0 +1,5 @@
+Leia CLAUDE.md antes de qualquer alteração. Regras críticas: proibido lock em memória
+(synchronized/ReentrantLock/SemaphoreSlim); concorrência só via SELECT ... FOR UPDATE no
+PostgreSQL, uma peça por vez em ordem crescente de id; saldo derivado de reservas ATIVAS não
+expiradas; erros em application/problem+json com code; 409 que precisa commitar transição é
+retorno, não exceção; Clock injetado; sem JPA (Spring JDBC); sem N+1.
