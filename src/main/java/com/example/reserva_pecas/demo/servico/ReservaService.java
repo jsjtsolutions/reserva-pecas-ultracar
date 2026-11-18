@@ -133,4 +133,64 @@ public class ReservaService {
     private ReservaResponse paraDto(Reserva r, List<ItemReserva> itens) {
         return new ReservaResponse(r.id(), r.ordemServicoId(), r.status().name(), r.criadaEm(), r.expiraEm(), paraDto(itens));
     }
+
+    @Transactional
+    public RespostaHttp confirmar(long oficinaId, long reservaId) {
+        Reserva r = reservas.buscarParaAtualizacao(oficinaId, reservaId)
+                .orElseThrow(() -> Erros.reservaNaoEncontrada(reservaId));   // R6 -> 404
+        Instant agora = clock.instant();
+
+        if (r.status() != StatusReserva.ATIVA) {
+            throw Erros.transicaoInvalida(r.status(), StatusReserva.CONFIRMADA.name());   // R5
+        }
+        if (!r.expiraEm().isAfter(agora)) {
+            // A transicao precisa ser commitada: por isso 409 e RETORNO, nao excecao.
+            reservas.mudarStatus(reservaId, StatusReserva.ATIVA, StatusReserva.EXPIRADA, agora);
+            return respostas.conflito(Erros.reservaExpirada(reservaId));
+        }
+
+        List<ItemReserva> itens = reservas.itens(reservaId);   // ja vem ORDER BY peca_id
+        for (ItemReserva item : itens) {
+            pecas.buscarParaAtualizacao(oficinaId, item.pecaId())
+                    .orElseThrow(() -> Erros.pecaNaoEncontrada(java.util.List.of(item.pecaId())));
+        }
+        for (ItemReserva item : itens) {
+            if (pecas.baixarEstoque(oficinaId, item.pecaId(), item.quantidade()) != 1) {
+                throw Erros.estoqueInconsistente(item.pecaId());   // rollback de toda a baixa
+            }
+        }
+        if (reservas.mudarStatus(reservaId, StatusReserva.ATIVA, StatusReserva.CONFIRMADA, agora) != 1) {
+            throw Erros.transicaoInvalida(r.status(), StatusReserva.CONFIRMADA.name());
+        }
+        return respostas.ok(new ReservaResponse(r.id(), r.ordemServicoId(), StatusReserva.CONFIRMADA.name(),
+                r.criadaEm(), r.expiraEm(), paraDto(itens)));
+    }
+
+    @Transactional
+    public RespostaHttp cancelar(long oficinaId, long reservaId) {
+        Reserva r = reservas.buscarParaAtualizacao(oficinaId, reservaId)
+                .orElseThrow(() -> Erros.reservaNaoEncontrada(reservaId));
+        Instant agora = clock.instant();
+
+        if (r.status() != StatusReserva.ATIVA) {
+            throw Erros.transicaoInvalida(r.status(), StatusReserva.CANCELADA.name());
+        }
+        if (!r.expiraEm().isAfter(agora)) {
+            reservas.mudarStatus(reservaId, StatusReserva.ATIVA, StatusReserva.EXPIRADA, agora);
+            return respostas.conflito(Erros.reservaExpirada(reservaId));
+        }
+        // Cancelar nao mexe no estoque fisico: sair de ATIVA ja libera o saldo derivado.
+        if (reservas.mudarStatus(reservaId, StatusReserva.ATIVA, StatusReserva.CANCELADA, agora) != 1) {
+            throw Erros.transicaoInvalida(r.status(), StatusReserva.CANCELADA.name());
+        }
+        return respostas.ok(new ReservaResponse(r.id(), r.ordemServicoId(), StatusReserva.CANCELADA.name(),
+                r.criadaEm(), r.expiraEm(), paraDto(reservas.itens(reservaId))));
+    }
+
+    @Transactional(readOnly = true)
+    public ReservaResponse buscar(long oficinaId, long reservaId) {
+        Reserva r = reservas.buscar(oficinaId, reservaId)
+                .orElseThrow(() -> Erros.reservaNaoEncontrada(reservaId));
+        return paraDto(r, reservas.itens(reservaId));
+    }
 }
